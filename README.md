@@ -26,6 +26,10 @@ Go to [Releases](https://github.com/Coprexist/AIsChat-Releases/releases) to down
 三个平台的 job 都在 `.github/workflows/build.yml`：推 tag 触发，也可手动 `workflow_dispatch`
 （`tag` 填版本号或 `main`；勾上 `build_only` 则只构建、不发 Release）。
 
+注意触发源是**本仓库**的 tag——主仓库打 tag 不会触发这里（主仓库目前也没有发布 workflow）。
+另一种触发方式是 `repository_dispatch`（`event_type=release`，`client_payload.tag` 给版本号）。
+构建时按这个 tag 去检出主仓库的同一 tag，所以两边 tag 要同名。
+
 打包入口与 GUI 源码由 `scripts/stage.sh` 统一拷进主仓库检出目录，并当场用 `find_spec`
 校验 `gui` / `gui_app` / `server_core` 能否解析。这三者是运行期才 import 的模块，漏拷不会让
 构建失败，只会让用户拿到 `ModuleNotFoundError`——v0.4.1 的 exe / dmg / tar.gz 都因此不可用。
