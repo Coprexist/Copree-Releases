@@ -1,4 +1,4 @@
-﻿; AIsChat Launcher NSIS Installer Script
+; AIsChat Launcher NSIS Installer Script
 ; =======================================
 ; Generates single .exe installer with:
 ; - Language selection at start
@@ -24,8 +24,8 @@ VIAddVersionKey "FileVersion" "0.3.14"
 VIAddVersionKey "FileDescription" "AIsChat Desktop Launcher Installer"
 
 ; --- Interface Settings ---
-!define MUI_ICON "frontend\public\logo-transparent.ico"
-!define MUI_UNICON "frontend\public\logo-transparent.ico"
+!define MUI_ICON "frontend\public\brand\coprexist-icon.ico"
+!define MUI_UNICON "frontend\public\brand\coprexist-icon.ico"
 !define MUI_ABORTWARNING
 
 ; --- Language Selection ---

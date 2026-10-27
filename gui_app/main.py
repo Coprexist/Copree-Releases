@@ -42,6 +42,10 @@ def _candidate_logo_paths() -> list[Path]:
     if getattr(sys, "frozen", False):
         base = Path(sys._MEIPASS)
         return [
+            base / "frontend" / "dist" / "brand" / "coprexist-icon.ico",
+            base / "frontend" / "dist" / "brand" / "coprexist-icon-192.png",
+            base / "frontend" / "public" / "brand" / "coprexist-icon.ico",
+            base / "frontend" / "public" / "brand" / "coprexist-icon-192.png",
             base / "frontend" / "public" / "logo-transparent.ico",
             base / "frontend" / "dist" / "logo-transparent.ico",
             base / "frontend" / "dist" / "logo-transparent.png",
@@ -49,6 +53,10 @@ def _candidate_logo_paths() -> list[Path]:
         ]
     root = Path(__file__).resolve().parent.parent
     return [
+        root / "frontend" / "public" / "brand" / "coprexist-icon.ico",
+        root / "frontend" / "public" / "brand" / "coprexist-icon-192.png",
+        root / "frontend" / "dist" / "brand" / "coprexist-icon.ico",
+        root / "frontend" / "dist" / "brand" / "coprexist-icon-192.png",
         root / "frontend" / "public" / "logo-transparent.ico",
         root / "frontend" / "dist" / "logo-transparent.ico",
         root / "frontend" / "dist" / "logo-transparent.png",

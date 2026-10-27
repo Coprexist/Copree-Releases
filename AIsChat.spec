@@ -1,7 +1,13 @@
+import sys
+
 from PyInstaller.utils.hooks import collect_submodules
 # -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
+
+# 应用图标：Windows 用 .ico（品牌标记暂时改用官网 coprexist.com 的）；macOS 需要 .icns，
+# 暂时不指定，交由 PyInstaller 用默认图标。
+_APP_ICON = 'frontend/public/brand/coprexist-icon.ico' if sys.platform.startswith('win') else None
 
 a = Analysis(
     ['run_packaged.py'],
@@ -73,6 +79,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='AIsChat',
+    icon=_APP_ICON,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
