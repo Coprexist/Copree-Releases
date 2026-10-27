@@ -42,6 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.routing import Route
 
 
 class APIPrefixMiddleware(BaseHTTPMiddleware):
@@ -68,27 +69,21 @@ app.add_middleware(APIPrefixMiddleware)
 
 
 def _replace_root_route(app):
-    def _walk(routes):
-        for route in routes:
-            if getattr(route, "path", None) == "/" and "GET" in getattr(route, "methods", set()):
-                return route
-            sub_routes = getattr(route, "routes", None)
-            if sub_routes:
-                found = _walk(sub_routes)
-                if found:
-                    return found
-            original_router = getattr(route, "original_router", None)
-            if original_router is not None:
-                found = _walk(original_router.routes)
-                if found:
-                    return found
-        return None
+    """把后端自带的 GET /（返回服务状态 JSON）替换为 SPA 首页。
 
-    root_route = _walk(app.router.routes)
-    if root_route:
-        async def index():
-            return FileResponse(STATIC_DIR / "index.html")
-        root_route.endpoint = index
+    Starlette 在 Route.__init__ 里就已构建好 self.app = request_response(endpoint)，
+    事后修改 route.endpoint 不会重新构建处理函数，请求仍走旧闭包。因此必须替换整条
+    路由对象，而不是只改 endpoint 字段。
+    """
+    async def index(_request: Request):
+        return FileResponse(STATIC_DIR / "index.html")
+
+    routes = app.router.routes
+    for i, route in enumerate(routes):
+        if getattr(route, "path", None) == "/" and "GET" in getattr(route, "methods", set()):
+            routes[i] = Route("/", index, methods=["GET"], include_in_schema=False)
+            return
+    routes.insert(0, Route("/", index, methods=["GET"], include_in_schema=False))
 
 
 _replace_root_route(app)
