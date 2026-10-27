@@ -5,9 +5,14 @@ from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
-# 应用图标：Windows 用 .ico（品牌标记暂时改用官网 coprexist.com 的）；macOS 需要 .icns，
-# 暂时不指定，交由 PyInstaller 用默认图标。
-_APP_ICON = 'frontend/public/brand/coprexist-icon.ico' if sys.platform.startswith('win') else None
+# 应用图标：Windows 用 .ico、macOS 用 .icns（都由 frontend/public/brand 下的主图派生，
+# Linux 的 tar.gz 没有图标概念，交给默认）。
+if sys.platform.startswith('win'):
+    _APP_ICON = 'frontend/public/brand/coprexist-icon.ico'
+elif sys.platform == 'darwin':
+    _APP_ICON = 'frontend/public/brand/coprexist-icon.icns'
+else:
+    _APP_ICON = None
 
 a = Analysis(
     ['run_packaged.py'],

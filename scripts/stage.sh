@@ -18,6 +18,22 @@ cp "$here"/run_packaged.py \
    "$dest"/
 cp -r "$here"/gui_app "$dest"/
 
+# 品牌图标由主图 frontend/public/brand/coprexist-icon-512.png 派生出各档 PNG、ICO、ICNS。
+# 打包前重跑一次，避免仓库里提交的二进制与主图漂移；改图只需替换主图。
+python "$dest/scripts/make_app_icons.py"
+
+# 版本号的唯一来源是 tag：源码里的 app_version 与 tag 不一致就直接失败。
+# 否则会打出「版本号写着 A、内容却是 B」的包——0.4.14 曾因此重建过一次。
+if [ -n "${TAG:-}" ]; then
+  tag_version=${TAG#v}
+  source_version=$(sed -n 's/^    app_version: str = "\([0-9][0-9.]*\)"/\1/p' "$dest/backend/app/config.py")
+  if [ "$tag_version" != "$source_version" ]; then
+    echo "tag ${TAG} 与源码版本 ${source_version:-未取到} 不一致：先改 backend/app/config.py" >&2
+    exit 1
+  fi
+  echo "version ok: ${source_version}"
+fi
+
 # 只检查模块能否解析，不真的 import：GUI 依赖 tkinter，构建机上未必装了
 cd "$dest"
 python - <<'PY'

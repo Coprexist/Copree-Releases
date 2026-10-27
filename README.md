@@ -34,6 +34,16 @@ Go to [Releases](https://github.com/Coprexist/AIsChat-Releases/releases) to down
 校验 `gui` / `gui_app` / `server_core` 能否解析。这三者是运行期才 import 的模块，漏拷不会让
 构建失败，只会让用户拿到 `ModuleNotFoundError`——v0.4.1 的 exe / dmg / tar.gz 都因此不可用。
 
+### 发版约定
+
+- **版本号只有一个来源：tag。** 源码里的 `app_version` 必须与 tag 一致，`stage.sh` 会在打包前
+  核对，不一致直接让构建失败。包的 `/health` 自报的版本、安装包里的版本号都来自这一处。
+- **已发布的 tag 不复用。** 内容有变化就递增版本号。同名重建会留下「同一个版本号、两份不同
+  内容」的包，用户与自己都分不清（0.4.14 就重建过一次，只能在 Release 说明里额外标注）。
+- **图标**：`frontend/public/brand/coprexist-icon-512.png` 是唯一主图，
+  `scripts/make_app_icons.py` 从它派生出各档 PNG、`coprexist-icon.ico`（Windows）与
+  `coprexist-icon.icns`（macOS）。打包前 `stage.sh` 会自动重跑一次，换图只需替换主图。
+
 ## Changelog
 
 ### v0.4.0 (2026-08-24)
