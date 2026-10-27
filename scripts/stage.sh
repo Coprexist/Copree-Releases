@@ -11,6 +11,7 @@ here=$(cd "$(dirname "$0")/.." && pwd)
 
 cp "$here"/run_packaged.py \
    "$here"/server_core.py \
+   "$here"/api_prefix.py \
    "$here"/gui.py \
    "$here"/AIsChat.spec \
    "$here"/installer.nsi \
@@ -40,8 +41,9 @@ python - <<'PY'
 import importlib.util
 import sys
 
-missing = [m for m in ("gui", "gui_app", "server_core") if importlib.util.find_spec(m) is None]
+missing = [m for m in ("gui", "gui_app", "server_core", "api_prefix")
+           if importlib.util.find_spec(m) is None]
 if missing:
     sys.exit(f"staging 不完整，缺少模块：{missing}")
-print("staging ok: gui, gui_app, server_core")
+print("staging ok: gui, gui_app, server_core, api_prefix")
 PY

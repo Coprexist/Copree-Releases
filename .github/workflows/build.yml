@@ -72,7 +72,11 @@ jobs:
         shell: bash
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: bash scripts/stage.sh source
+        run: |
+          bash scripts/stage.sh source
+          # 打包版独有的 /api 前缀中间件守卫：带 query 的请求必须命中真实路由，
+          # 不能掉进 SPA 兜底（见 api_prefix.py 的模块说明）
+          python scripts/check_api_prefix.py
 
       - name: PyInstaller (directory mode)
         working-directory: source
@@ -151,7 +155,11 @@ jobs:
         shell: bash
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: bash scripts/stage.sh source
+        run: |
+          bash scripts/stage.sh source
+          # 打包版独有的 /api 前缀中间件守卫：带 query 的请求必须命中真实路由，
+          # 不能掉进 SPA 兜底（见 api_prefix.py 的模块说明）
+          python scripts/check_api_prefix.py
 
       - name: PyInstaller (directory mode)
         working-directory: source
@@ -233,7 +241,11 @@ jobs:
         shell: bash
         env:
           TAG: ${{ steps.tag.outputs.tag }}
-        run: bash scripts/stage.sh source
+        run: |
+          bash scripts/stage.sh source
+          # 打包版独有的 /api 前缀中间件守卫：带 query 的请求必须命中真实路由，
+          # 不能掉进 SPA 兜底（见 api_prefix.py 的模块说明）
+          python scripts/check_api_prefix.py
 
       - name: PyInstaller (directory mode)
         working-directory: source

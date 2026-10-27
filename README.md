@@ -31,11 +31,15 @@ Go to [Releases](https://github.com/Coprexist/AIsChat-Releases/releases) to down
 构建时按这个 tag 去检出主仓库的同一 tag，所以两边 tag 要同名。
 
 打包入口与 GUI 源码由 `scripts/stage.sh` 统一拷进主仓库检出目录，并当场用 `find_spec`
-校验 `gui` / `gui_app` / `server_core` 能否解析。这三者是运行期才 import 的模块，漏拷不会让
-构建失败，只会让用户拿到 `ModuleNotFoundError`——v0.4.1 的 exe / dmg / tar.gz 都因此不可用。
+校验 `gui` / `gui_app` / `server_core` / `api_prefix` 能否解析。这几者是运行期才 import 的模块，
+漏拷不会让构建失败，只会让用户拿到 `ModuleNotFoundError`——v0.4.1 的 exe / dmg / tar.gz 都因此不可用。
 
 ### 发版约定
 
+- **打包版独有的路径必须有守卫。** `/api` 前缀中间件（`api_prefix.py`）只在打包版生效，主仓库的
+  用例一条都碰不到它：它一旦把 query 拼回 `scope["path"]`，带参数的接口就会掉进 SPA 兜底、
+  返回 index.html，症状是"登录和列表都正常，一点开对话就崩"。`stage.sh` 之后固定跑
+  `scripts/check_api_prefix.py`，它必须保持绿色。
 - **版本号只有一个来源：tag。** 源码里的 `app_version` 必须与 tag 一致，`stage.sh` 会在打包前
   核对，不一致直接让构建失败。包的 `/health` 自报的版本、安装包里的版本号都来自这一处。
 - **已发布的 tag 不复用。** 内容有变化就递增版本号。同名重建会留下「同一个版本号、两份不同

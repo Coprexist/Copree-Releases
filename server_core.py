@@ -40,28 +40,13 @@ from app.main import app
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.routing import Route
 
 
-class APIPrefixMiddleware(BaseHTTPMiddleware):
-    """移除 /api 前缀，与 vite 代理行为一致"""
-    async def dispatch(self, request: Request, call_next):
-        # 如果路径以 /api/ 开头，去掉 /api 前缀
-        if request.url.path.startswith("/api/"):
-            # 重写路径：/api/auth/login → /auth/login
-            new_path = request.url.path[4:]  # 去掉 "/api"
-            if request.url.query:
-                new_path += f"?{request.url.query}"
-            # 创建新的 URL
-            scope = request.scope
-            scope["path"] = scope["path"][4:]  # 去掉 "/api"
-            if scope.get("query_string"):
-                scope["path"] += f"?{scope['query_string'].decode()}"
-        
-        response = await call_next(request)
-        return response
+# 中间件单独成模块：它有一条"绝不把 query 拼回 path"的硬规则，守它的是
+# scripts/check_api_prefix.py（CI 跑）。细节与踩过的坑见 api_prefix.py 的模块说明。
+from api_prefix import APIPrefixMiddleware
 
 
 # 注册 API 前缀中间件
