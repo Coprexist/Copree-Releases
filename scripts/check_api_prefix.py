@@ -14,6 +14,14 @@
 import os
 import sys
 
+# Windows 的 CI 控制台是 cp1252，直接 print 中文会 UnicodeEncodeError 把构建搞挂
+# （2026-10-27 v0.4.15 首跑就挂在这——守卫本身是通过的，死在了打日志上）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001 — 老环境没有 reconfigure 就算了，别因此中断
+        pass
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, WebSocket
