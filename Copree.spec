@@ -81,7 +81,9 @@ a = Analysis(
 # 启动器会回落到 config.py 里的 app_version。
 import pathlib as _pathlib
 if _pathlib.Path('version.txt').exists():
-    a.datas.append(('version.txt', '.'))
+    # datas TOC 是三段 (dest, src, typecode)：写成两段会在 COLLECT 阶段
+    # 报 "not enough values to unpack (expected 3, got 2)"。dest 就是包内路径。
+    a.datas.append(('version.txt', 'version.txt', 'DATA'))
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
