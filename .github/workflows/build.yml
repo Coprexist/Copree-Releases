@@ -11,6 +11,10 @@ on:
       tag:
         description: 'Release tag（如 v0.4.1）'
         required: false
+      build_only:
+        description: '只构建、不上传 Release（验证打包链路用）'
+        type: boolean
+        default: false
 
 env:
   MAIN_REPO: Coprexist/Copree
@@ -51,7 +55,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r source/backend/requirements.txt
-          pip install customtkinter pystray pyinstaller
+          pip install -r gui-requirements.txt
 
       - name: Build frontend
         shell: bash
@@ -64,8 +68,10 @@ jobs:
         shell: bash
         run: choco install nsis -y
 
-      - name: Copy packaging files
+      - name: Stage packaging files
         shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           cp run_packaged.py source/
           cp server_core.py source/
@@ -91,7 +97,17 @@ jobs:
       - name: Build installer
         shell: bash
         working-directory: source
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
+          # 安装包里的版本号原先写死 0.3.14，比实际发布落后十个版本；按 tag 注入
+          ver=${TAG#v}
+          if [[ $ver =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            sed -i -E "s/VIProductVersion \"[0-9.]+\"/VIProductVersion \"${ver}.0\"/" installer.nsi
+            sed -i -E "s/(VIAddVersionKey \"FileVersion\" \")[0-9.]+/\1${ver}/" installer.nsi
+          else
+            echo "tag ${TAG} 不是 x.y.z 形式，跳过版本号注入"
+          fi
           "/c/Program Files (x86)/NSIS/makensis.exe" installer.nsi || \
           "/c/Program Files/NSIS/makensis.exe" installer.nsi || \
           "$(cygpath "$PROGRAMFILES(x86)")/NSIS/makensis.exe" installer.nsi || \
@@ -138,7 +154,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r source/backend/requirements.txt
-          pip install customtkinter pystray pyinstaller
+          pip install -r gui-requirements.txt
 
       - name: Build frontend
         shell: bash
@@ -147,14 +163,15 @@ jobs:
           npm ci
           npm run build
 
-      - name: Copy packaging files
+      - name: Stage packaging files
         shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          cp run_packaged.py source/
-          cp server_core.py source/
-          cp -r gui_app source/
-          mkdir -p source/frontend/public
-          cp frontend/public/logo-transparent.* source/frontend/public/ 2>/dev/null || true
+          bash scripts/stage.sh source
+          # 打包版独有的 /api 前缀中间件守卫：带 query 的请求必须命中真实路由，
+          # 不能掉进 SPA 兜底（见 api_prefix.py 的模块说明）
+          python scripts/check_api_prefix.py
 
       - name: PyInstaller (directory mode)
         working-directory: source
@@ -232,12 +249,15 @@ jobs:
           npm ci
           npm run build
 
-      - name: Copy packaging files
+      - name: Stage packaging files
         shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          cp run_packaged.py source/
-          cp server_core.py source/
-          cp -r gui_app source/
+          bash scripts/stage.sh source
+          # 打包版独有的 /api 前缀中间件守卫：带 query 的请求必须命中真实路由，
+          # 不能掉进 SPA 兜底（见 api_prefix.py 的模块说明）
+          python scripts/check_api_prefix.py
 
       - name: PyInstaller (directory mode)
         working-directory: source
@@ -273,6 +293,8 @@ jobs:
 
   release:
     needs: [build-windows, build-macos, build-linux]
+    # workflow_dispatch 可用 build_only 只验证打包链路，不发布 Release
+    if: ${{ !inputs.build_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

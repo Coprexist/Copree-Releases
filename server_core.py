@@ -40,27 +40,13 @@ from app.main import app
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.routing import Route
 
 
-class APIPrefixMiddleware(BaseHTTPMiddleware):
-    """移除 /api 前缀，与 vite 代理行为一致"""
-    async def dispatch(self, request: Request, call_next):
-        # 如果路径以 /api/ 开头，去掉 /api 前缀
-        if request.url.path.startswith("/api/"):
-            # 重写路径：/api/auth/login → /auth/login
-            new_path = request.url.path[4:]  # 去掉 "/api"
-            if request.url.query:
-                new_path += f"?{request.url.query}"
-            # 创建新的 URL
-            scope = request.scope
-            scope["path"] = scope["path"][4:]  # 去掉 "/api"
-            if scope.get("query_string"):
-                scope["path"] += f"?{scope['query_string'].decode()}"
-        
-        response = await call_next(request)
-        return response
+# 中间件单独成模块：它有一条"绝不把 query 拼回 path"的硬规则，守它的是
+# scripts/check_api_prefix.py（CI 跑）。细节与踩过的坑见 api_prefix.py 的模块说明。
+from api_prefix import APIPrefixMiddleware
 
 
 # 注册 API 前缀中间件
@@ -68,27 +54,21 @@ app.add_middleware(APIPrefixMiddleware)
 
 
 def _replace_root_route(app):
-    def _walk(routes):
-        for route in routes:
-            if getattr(route, "path", None) == "/" and "GET" in getattr(route, "methods", set()):
-                return route
-            sub_routes = getattr(route, "routes", None)
-            if sub_routes:
-                found = _walk(sub_routes)
-                if found:
-                    return found
-            original_router = getattr(route, "original_router", None)
-            if original_router is not None:
-                found = _walk(original_router.routes)
-                if found:
-                    return found
-        return None
+    """把后端自带的 GET /（返回服务状态 JSON）替换为 SPA 首页。
 
-    root_route = _walk(app.router.routes)
-    if root_route:
-        async def index():
-            return FileResponse(STATIC_DIR / "index.html")
-        root_route.endpoint = index
+    Starlette 在 Route.__init__ 里就已构建好 self.app = request_response(endpoint)，
+    事后修改 route.endpoint 不会重新构建处理函数，请求仍走旧闭包。因此必须替换整条
+    路由对象，而不是只改 endpoint 字段。
+    """
+    async def index(_request: Request):
+        return FileResponse(STATIC_DIR / "index.html")
+
+    routes = app.router.routes
+    for i, route in enumerate(routes):
+        if getattr(route, "path", None) == "/" and "GET" in getattr(route, "methods", set()):
+            routes[i] = Route("/", index, methods=["GET"], include_in_schema=False)
+            return
+    routes.insert(0, Route("/", index, methods=["GET"], include_in_schema=False))
 
 
 _replace_root_route(app)
