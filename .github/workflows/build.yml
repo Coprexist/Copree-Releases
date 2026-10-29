@@ -231,7 +231,11 @@ jobs:
               exit 1
             fi
           done
-          echo "bundle ok: customtkinter + PIL 已打包"
+          # 平台文档：.app 里的 app 数据目录在 Contents/Frameworks 下，
+          # read_manual 按 __file__ 上溯四级找根，落点就是 Contents，这里补一份。
+          mkdir -p dist/Copree.app/Contents/docs
+          cp -R docs/guides dist/Copree.app/Contents/docs/
+          echo "bundle ok: customtkinter + PIL 已打包，文档已带上"
 
       - name: Create dmg
         run: |
