@@ -3,7 +3,7 @@
 #
 # 三个平台共用这一份清单：以前每个 job 各写一份 cp 列表，漏拷一个文件不会让构建失败，
 # 只会在用户机器上变成 ModuleNotFoundError——v0.4.1 的 exe / dmg / tar.gz 全是这么废掉的
-# （run_packaged.py 里 from gui import AIsChatGUI，而 gui.py 从来没被拷进去）。
+# （run_packaged.py 里 from gui import CopreeGUI，而 gui.py 从来没被拷进去）。
 set -euo pipefail
 
 dest=${1:?用法: scripts/stage.sh <目标目录>}
@@ -13,7 +13,7 @@ cp "$here"/run_packaged.py \
    "$here"/server_core.py \
    "$here"/api_prefix.py \
    "$here"/gui.py \
-   "$here"/AIsChat.spec \
+   "$here"/Copree.spec \
    "$here"/installer.nsi \
    "$here"/LICENSE.txt \
    "$dest"/
