@@ -40,6 +40,8 @@ class ServerController:
         self.thread: threading.Thread | None = None
         self.state = STATE_STOPPED
         self.port = port
+        # 复用别的实例已经起好的服务（第二个启动器 / 上次没退干净）
+        self.external = False
 
         self._health_ok = False
         self._health_lock = threading.Lock()
@@ -64,6 +66,12 @@ class ServerController:
         健康检查也在独立后台线程执行，不阻塞 tkinter 主循环。
         """
         if self.state in _ACTIVE_STATES:
+            return
+        # 端口上已经有 Copree 后端在跑：直接附着。再起一份只会得到
+        # [Errno 10048] address already in use，然后「服务异常退出」。
+        if self._probe_health(0.6):
+            self.external = True
+            self.state = STATE_RUNNING
             return
         self.state = STATE_STARTING
         self._health_ok = False
@@ -131,9 +139,22 @@ class ServerController:
                 # 探测失败 → 继续重试
                 continue
 
+    def _probe_health(self, timeout: float) -> bool:
+        """同步探一下端口上是不是已经有后端在跑（只在启动前调用，最多几百毫秒）。"""
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{self.port}/health", timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     def stop(self) -> None:
         """请求优雅停止（仅对启动中 / 运行中生效）。"""
         if self.state not in (STATE_STARTING, STATE_RUNNING):
+            return
+        if self.external:
+            # 别人的服务不归我们关，只解除附着
+            self.external = False
+            self.state = STATE_STOPPED
             return
         self.state = STATE_STOPPING
         if self.server is not None:

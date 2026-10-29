@@ -1,5 +1,5 @@
 """
-AIsChat 桌面启动器主窗口
+Copree 桌面启动器主窗口
 =======================
 品牌风格对齐前端：紫色系（默认）+ 青碧第二主题色。
 单窗口视图切换：主页 ↔ 设置页，顶栏常驻。
@@ -35,13 +35,17 @@ CLOSE_GRACE_SECONDS = 3.0
 
 # 注册表自启动路径
 _AUTO_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-_AUTO_RUN_NAME = "AIsChatLauncher"
+_AUTO_RUN_NAME = "CopreeLauncher"
 
 
 def _candidate_logo_paths() -> list[Path]:
     if getattr(sys, "frozen", False):
         base = Path(sys._MEIPASS)
         return [
+            base / "frontend" / "dist" / "brand" / "coprexist-icon.ico",
+            base / "frontend" / "public" / "brand" / "coprexist-icon.ico",
+            base / "frontend" / "dist" / "brand" / "coprexist-icon-512.png",
+            base / "frontend" / "public" / "brand" / "coprexist-icon-512.png",
             base / "frontend" / "public" / "logo-transparent.ico",
             base / "frontend" / "dist" / "logo-transparent.ico",
             base / "frontend" / "dist" / "logo-transparent.png",
@@ -49,11 +53,38 @@ def _candidate_logo_paths() -> list[Path]:
         ]
     root = Path(__file__).resolve().parent.parent
     return [
+        root / "frontend" / "dist" / "brand" / "coprexist-icon.ico",
+        root / "frontend" / "public" / "brand" / "coprexist-icon.ico",
+        root / "frontend" / "dist" / "brand" / "coprexist-icon-512.png",
+        root / "frontend" / "public" / "brand" / "coprexist-icon-512.png",
         root / "frontend" / "public" / "logo-transparent.ico",
         root / "frontend" / "dist" / "logo-transparent.ico",
         root / "frontend" / "dist" / "logo-transparent.png",
         root / "frontend" / "public" / "logo-transparent.png",
     ]
+
+
+def _app_version() -> str:
+    """启动器上显示的版本：优先读打包时写进来的 version.txt，其次读源码里的 app_version。"""
+    import re
+    if getattr(sys, 'frozen', False):
+        candidates = [Path(sys._MEIPASS) / 'version.txt']
+    else:
+        root = Path(__file__).resolve().parent.parent
+        candidates = [root / 'version.txt', root / 'backend' / 'app' / 'config.py']
+    for path in candidates:
+        try:
+            text = path.read_text(encoding='utf-8') 
+        except OSError:
+            continue
+        if path.suffix == '.txt':
+            value = text.strip()
+        else:
+            found = re.search(r'app_version:\s*str\s*=\s*"([^"]+)"', text)
+            value = found.group(1) if found else ''
+        if value:
+            return value
+    return 'dev'
 
 
 def _get_exe_path() -> str:
@@ -96,7 +127,49 @@ def _is_auto_start() -> bool:
         return False
 
 
-class AIsChatGUI:
+_INSTANCE_LOCK_FILE = None
+
+
+def _warn_already_running() -> None:
+    """已有实例在跑时的提示（此时窗口还没建，用系统弹窗）。"""
+    text = "Copree 启动器已经在运行了。\n\n请在任务栏或系统托盘里找到它。"
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(None, text, "Copree", 0x40)
+            return
+        except Exception:
+            pass
+    print(text)
+
+
+def _acquire_single_instance() -> bool:
+    """单实例锁：占住 data/launcher.lock 的排他锁，占不到说明已经有一个在跑。
+
+    没有这道锁时，第二个启动器会去抢 8000 端口，uvicorn 报
+    [Errno 10048] 然后「服务异常退出」——看起来像崩溃，其实只是重复启动。
+    """
+    global _INSTANCE_LOCK_FILE
+    try:
+        path = settings._data_dir() / "launcher.lock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(path, "a+")
+        if sys.platform == "win32":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return False
+    _INSTANCE_LOCK_FILE = handle
+    return True
+
+
+class CopreeGUI:
     _STATE_UI = {
         STATE_STOPPED: dict(
             status="服务未启动", dot=theme.STATUS_STOPPED,
@@ -121,11 +194,15 @@ class AIsChatGUI:
     }
 
     def __init__(self, auto_start: bool = True, start_minimized: bool = False):
+        if not _acquire_single_instance():
+            _warn_already_running()
+            raise SystemExit(0)
+
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
 
         self.root = ctk.CTk()
-        self.root.title("AIsChat 启动器")
+        self.root.title("Copree 启动器")
         self.root.configure(fg_color=theme.CANVAS)
         self.root.minsize(760, 560)
         self._center_window()
@@ -148,11 +225,8 @@ class AIsChatGUI:
         self._apply_state(STATE_STOPPED)
         self._set_icon()
 
-        # 最小化到托盘
-        if self._settings.get("minimize_to_tray", True):
-            self.root.protocol("WM_DELETE_WINDOW", self._minimize_to_tray)
-        else:
-            self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        # 关闭窗口：默认问一句（退出还是收进托盘），可在设置里记住
+        self.root.protocol("WM_DELETE_WINDOW", self._on_window_close)
 
         # 启动后台服务
         self.root.after(POLL_INTERVAL_MS, self._tick)
@@ -179,7 +253,7 @@ class AIsChatGUI:
         title_col = ctk.CTkFrame(brand, fg_color="transparent")
         title_col.pack(side="left")
         self._title_labels = [ctk.CTkLabel(
-            title_col, text="AIsChat",
+            title_col, text="Copree",
             font=(theme.FONT_UI, 22, "bold"), text_color=theme.TEXT_PRIMARY)]
         self._title_labels[-1].pack(anchor="w")
         self._subtitle_labels = [ctk.CTkLabel(
@@ -277,7 +351,7 @@ class AIsChatGUI:
         footer = ctk.CTkFrame(self._home, fg_color="transparent")
         footer.pack(fill="x", padx=32, pady=(0, 12))
         self.footer_left = ctk.CTkLabel(
-            footer, text="AIsChat v0.4.0", font=(theme.FONT_UI, 11),
+            footer, text=f"Copree v{_app_version()}", font=(theme.FONT_UI, 11),
             text_color=theme.TEXT_MUTED)
         self.footer_left.pack(side="left")
         self.footer_right = ctk.CTkLabel(
@@ -476,11 +550,9 @@ class AIsChatGUI:
     def _toggle_tray(self) -> None:
         enabled = bool(self.tray_switch.get())
         self._settings["minimize_to_tray"] = enabled
+        # 这个开关就是"点叉叉时直接收进托盘、不再问"，所以它决定的也是 close_action
+        self._settings["close_action"] = "tray" if enabled else "ask"
         settings.save(self._settings)
-        if enabled:
-            self.root.protocol("WM_DELETE_WINDOW", self._minimize_to_tray)
-        else:
-            self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _copy_all_logs(self) -> None:
         text = self.log_panel.get_all_text()
@@ -492,6 +564,58 @@ class AIsChatGUI:
         self.root.after(1500, lambda: self._copy_log_btn.configure(text="复制全部日志"))
 
     # ── 最小化到托盘 ──
+
+    def _on_window_close(self) -> None:
+        """右上角叉叉：按设置问一句，或直接收托盘 / 直接退出。"""
+        action = str(self._settings.get("close_action", "ask"))
+        if action == "tray":
+            self._minimize_to_tray()
+        elif action == "quit":
+            self._on_close()
+        else:
+            self._ask_close_action()
+
+    def _ask_close_action(self) -> None:
+        """三选一：最小化到托盘 / 退出程序 / 取消；可勾「记住我的选择」。"""
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("关闭 Copree")
+        dialog.configure(fg_color=theme.CANVAS)
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        ctk.CTkLabel(
+            dialog, text="要退出 Copree，还是只关窗口、让服务继续在托盘里运行？",
+            font=(theme.FONT_UI, 13), text_color=theme.TEXT_PRIMARY,
+            wraplength=360, justify="left",
+        ).pack(padx=24, pady=(22, 10), anchor="w")
+        remember = ctk.CTkCheckBox(dialog, text="记住我的选择", font=(theme.FONT_UI, 12))
+        remember.pack(padx=24, pady=(0, 12), anchor="w")
+        row = ctk.CTkFrame(dialog, fg_color="transparent")
+        row.pack(fill="x", padx=24, pady=(0, 20))
+
+        def choose(action: str) -> None:
+            if remember.get():
+                self._settings["close_action"] = action
+                settings.save(self._settings)
+            dialog.destroy()
+            if action == "tray":
+                self._minimize_to_tray()
+            else:
+                self._on_close()
+
+        ctk.CTkButton(row, text="最小化到托盘", width=116,
+                      command=lambda: choose("tray")).pack(side="left")
+        ctk.CTkButton(row, text="退出程序", width=96, fg_color=theme.DANGER,
+                      hover_color=theme.DANGER_HOVER,
+                      command=lambda: choose("quit")).pack(side="left", padx=8)
+        ctk.CTkButton(row, text="取消", width=72, fg_color="transparent",
+                      hover_color=theme.ELEVATED,
+                      command=dialog.destroy).pack(side="left")
+
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
 
     def _minimize_to_tray(self) -> None:
         """隐藏窗口到系统托盘（需要 pystray + Pillow）。"""
@@ -512,7 +636,7 @@ class AIsChatGUI:
                 pystray.MenuItem("退出", self._tray_exit),
             )
             self._tray_icon = pystray.Icon(
-                "AIsChat", tray_img, "AIsChat 启动器", menu)
+                "Copree", tray_img, "Copree 启动器", menu)
             threading.Thread(target=self._tray_icon.run, daemon=True).start()
         except ImportError:
             # pystray 未安装，退回到直接关闭

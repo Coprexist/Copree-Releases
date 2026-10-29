@@ -13,7 +13,7 @@ on:
         required: false
 
 env:
-  MAIN_REPO: Coprexist/AIsChat
+  MAIN_REPO: Coprexist/Copree
 
 jobs:
   build-windows:
@@ -69,14 +69,24 @@ jobs:
         run: |
           cp run_packaged.py source/
           cp server_core.py source/
-          cp AIsChat.spec source/
+          cp Copree.spec source/
           cp installer.nsi source/
           cp LICENSE.txt source/
           cp -r gui_app source/
 
       - name: PyInstaller (directory mode)
         working-directory: source
-        run: pyinstaller AIsChat.spec
+        run: pyinstaller Copree.spec
+
+      - name: Launcher version
+        shell: bash
+        working-directory: source
+        run: |
+          VER="${{ steps.tag.outputs.tag }}"
+          VER="${VER#v}"
+          echo "!define VER3 \"$VER\"" > version.nsh
+          echo "!define VER4 \"$VER.0\"" >> version.nsh
+          echo "$VER" > version.txt
 
       - name: Build installer
         shell: bash
@@ -90,8 +100,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AIsChat-Installer
-          path: source/AIsChat-Installer.exe
+          name: Copree-Installer
+          path: source/Copree-Installer.exe
 
   build-macos:
     runs-on: macos-latest
@@ -150,7 +160,7 @@ jobs:
         working-directory: source
         run: |
           pyinstaller --noconfirm --windowed \
-            --name AIsChat \
+            --name Copree \
             --add-data "backend/app:app" \
             --add-data "frontend/dist:frontend/dist" \
             --add-data "gui_app:gui_app" \
@@ -170,13 +180,13 @@ jobs:
 
       - name: Create dmg
         run: |
-          hdiutil create -volname "AIsChat" -srcfolder source/dist/AIsChat.app -ov -format UDZO AIsChat.dmg
+          hdiutil create -volname "Copree" -srcfolder source/dist/Copree.app -ov -format UDZO Copree.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AIsChat-macOS
-          path: AIsChat.dmg
+          name: Copree-macOS
+          path: Copree.dmg
 
   build-linux:
     runs-on: ubuntu-latest
@@ -233,7 +243,7 @@ jobs:
         working-directory: source
         run: |
           pyinstaller --noconfirm --windowed \
-            --name AIsChat \
+            --name Copree \
             --add-data "backend/app:app" \
             --add-data "frontend/dist:frontend/dist" \
             --add-data "gui_app:gui_app" \
@@ -253,13 +263,13 @@ jobs:
 
       - name: Create tar.gz
         run: |
-          cd source/dist && tar czf ../../AIsChat-Linux.tar.gz AIsChat/
+          cd source/dist && tar czf ../../Copree-Linux.tar.gz Copree/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AIsChat-Linux
-          path: AIsChat-Linux.tar.gz
+          name: Copree-Linux
+          path: Copree-Linux.tar.gz
 
   release:
     needs: [build-windows, build-macos, build-linux]
@@ -282,19 +292,19 @@ jobs:
       - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
-          name: AIsChat-Installer
+          name: Copree-Installer
           path: artifacts
 
       - name: Download macOS dmg
         uses: actions/download-artifact@v4
         with:
-          name: AIsChat-macOS
+          name: Copree-macOS
           path: artifacts
 
       - name: Download Linux tarball
         uses: actions/download-artifact@v4
         with:
-          name: AIsChat-Linux
+          name: Copree-Linux
           path: artifacts
 
       - name: List files
@@ -305,10 +315,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: AIsChat ${{ steps.tag.outputs.tag }}
+          name: Copree ${{ steps.tag.outputs.tag }}
           draft: false
           generate_release_notes: true
           files: |
-            artifacts/AIsChat-Installer.exe
-            artifacts/AIsChat.dmg
-            artifacts/AIsChat-Linux.tar.gz
+            artifacts/Copree-Installer.exe
+            artifacts/Copree.dmg
+            artifacts/Copree-Linux.tar.gz

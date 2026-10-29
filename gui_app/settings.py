@@ -10,7 +10,9 @@ import sys
 from pathlib import Path
 
 DEFAULTS = {"theme": "purple", "log_font_size": "13", "port": "8000",
-            "auto_start": False, "minimize_to_tray": True}
+            "auto_start": False, "minimize_to_tray": True,
+            # 点右上角叉叉时：ask = 弹窗问 / tray = 直接收进托盘 / quit = 直接退出
+            "close_action": "ask"}
 
 
 def _data_dir() -> Path:

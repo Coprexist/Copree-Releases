@@ -11,6 +11,7 @@ a = Analysis(
         ('backend/app', 'app'),
         ('frontend/dist', 'frontend/dist'),
     ],
+
     hiddenimports=[
         'pydantic_settings',
         'sqlalchemy',
@@ -65,6 +66,12 @@ a = Analysis(
     noarchive=False,
 )
 
+# 版本号由 CI 生成（build.yml 的 Launcher version 步骤）；本地打包没有就跳过，
+# 启动器会回落到 config.py 里的 app_version。
+import pathlib as _pathlib
+if _pathlib.Path('version.txt').exists():
+    a.datas.append(('version.txt', '.'))
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -72,7 +79,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AIsChat',
+    name='Copree',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -93,5 +100,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AIsChat',
+    name='Copree',
 )

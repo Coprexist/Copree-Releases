@@ -1,20 +1,20 @@
-# AIsChat Launcher Installer
+# Copree Launcher Installer
 
 ## Main Repository
 
-[AIsChat](https://github.com/Coprexist/AIsChat) - AI Chat Framework
+[Copree](https://github.com/Coprexist/Copree) - AI Chat Framework
 
 ## Download
 
-Go to [Releases](https://github.com/Coprexist/AIsChat-Releases/releases) to download the latest version.
+Go to [Releases](https://github.com/Coprexist/Copree-Releases/releases) to download the latest version.
 
 ## Installation
 
-1. Download AIsChat-Installer.exe2. Run the installer3. Select installation language (English / Simplified Chinese)4. Choose installation directory (default: %LOCALAPPDATA%\AIsChat)5. Complete installation
+1. Download Copree-Installer.exe2. Run the installer3. Select installation language (English / Simplified Chinese)4. Choose installation directory (default: %LOCALAPPDATA%\Copree)5. Complete installation
 
 ## Uninstall
 
-- Start Menu -> AIsChat -> Uninstall AIsChat- Or Control Panel -> Programs and Features -> AIsChat Launcher -> Uninstall
+- Start Menu -> Copree -> Uninstall Copree- Or Control Panel -> Programs and Features -> Copree Launcher -> Uninstall
 
 ## Changelog
 

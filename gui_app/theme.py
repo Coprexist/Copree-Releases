@@ -1,5 +1,5 @@
 """
-AIsChat 启动器设计令牌（Design Tokens）
+Copree 启动器设计令牌（Design Tokens）
 =======================================
 双主题色系统（对齐前端品牌）：
 - purple：紫金（默认）—— 与前端 primary #8B5CF6 同款
