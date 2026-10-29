@@ -91,6 +91,9 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='Copree',
+    # 图标必须喂给 EXE：快捷方式、任务栏、资源管理器都读 exe 自带图标，
+    # 漏掉这一行装完就是白底空白图标（v0.4.16 第二版踩过）。
+    icon=_APP_ICON,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

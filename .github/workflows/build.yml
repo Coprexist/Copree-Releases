@@ -73,16 +73,11 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          cp run_packaged.py source/
-          cp server_core.py source/
-          cp Copree.spec source/
-          cp installer.nsi source/
-          cp LICENSE.txt source/
-          cp -r gui_app source/
-
-      - name: PyInstaller (directory mode)
-        working-directory: source
-        run: pyinstaller Copree.spec
+          # 三个平台共用一份 staging 清单。Windows 原先自己留了一份 cp 列表，
+          # 漏了 gui.py / api_prefix.py，打出来的 exe 一启动就 ModuleNotFoundError
+          # （v0.4.16 的第一版安装包就是这么废的，体积也少了 16MB）。
+          bash scripts/stage.sh source
+          python scripts/check_api_prefix.py
 
       - name: Launcher version
         shell: bash
@@ -93,6 +88,27 @@ jobs:
           echo "!define VER3 \"$VER\"" > version.nsh
           echo "!define VER4 \"$VER.0\"" >> version.nsh
           echo "$VER" > version.txt
+
+      # 版本文件必须在 PyInstaller 之前落地，否则启动器页脚的版本号读不到
+      - name: PyInstaller (directory mode)
+        working-directory: source
+        run: pyinstaller Copree.spec
+
+      - name: Verify GUI bundle
+        shell: bash
+        working-directory: source
+        run: |
+          # gui.py 漏拷时 PyInstaller 只写 warning 不失败，装到用户机器上才炸。
+          # customtkinter / PIL 是 GUI 链的探针：它们在 dist 里，说明 Analysis 真的分析到了 gui.py。
+          set -euo pipefail
+          for m in customtkinter PIL; do
+            if ! find dist -maxdepth 4 -type d -name "$m" | grep -q .; then
+              echo "dist 里没有 $m：GUI 依赖没被打进包，检查 staging 与 spec" >&2
+              find dist -maxdepth 2 -type d >&2 || true
+              exit 1
+            fi
+          done
+          echo "bundle ok: customtkinter + PIL 已打包"
 
       - name: Build installer
         shell: bash
@@ -195,6 +211,22 @@ jobs:
             --hidden-import uvicorn.lifespan.on \
             run_packaged.py
 
+      - name: Verify GUI bundle
+        shell: bash
+        working-directory: source
+        run: |
+          # gui.py 漏拷时 PyInstaller 只写 warning 不失败，装到用户机器上才炸。
+          # customtkinter / PIL 是 GUI 链的探针：它们在 dist 里，说明 Analysis 真的分析到了 gui.py。
+          set -euo pipefail
+          for m in customtkinter PIL; do
+            if ! find dist -maxdepth 4 -type d -name "$m" | grep -q .; then
+              echo "dist 里没有 $m：GUI 依赖没被打进包，检查 staging 与 spec" >&2
+              find dist -maxdepth 2 -type d >&2 || true
+              exit 1
+            fi
+          done
+          echo "bundle ok: customtkinter + PIL 已打包"
+
       - name: Create dmg
         run: |
           hdiutil create -volname "Copree" -srcfolder source/dist/Copree.app -ov -format UDZO Copree.dmg
@@ -280,6 +312,22 @@ jobs:
             --hidden-import uvicorn.lifespan \
             --hidden-import uvicorn.lifespan.on \
             run_packaged.py
+
+      - name: Verify GUI bundle
+        shell: bash
+        working-directory: source
+        run: |
+          # gui.py 漏拷时 PyInstaller 只写 warning 不失败，装到用户机器上才炸。
+          # customtkinter / PIL 是 GUI 链的探针：它们在 dist 里，说明 Analysis 真的分析到了 gui.py。
+          set -euo pipefail
+          for m in customtkinter PIL; do
+            if ! find dist -maxdepth 4 -type d -name "$m" | grep -q .; then
+              echo "dist 里没有 $m：GUI 依赖没被打进包，检查 staging 与 spec" >&2
+              find dist -maxdepth 2 -type d >&2 || true
+              exit 1
+            fi
+          done
+          echo "bundle ok: customtkinter + PIL 已打包"
 
       - name: Create tar.gz
         run: |
