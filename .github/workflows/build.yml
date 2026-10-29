@@ -108,7 +108,12 @@ jobs:
               exit 1
             fi
           done
-          echo "bundle ok: customtkinter + PIL 已打包"
+          # 平台文档：read_manual 找 docs/guides/用户手册.md。spec 把 guides 放进 _MEIPASS，
+          # 这里再往可执行文件旁放一份——安装包按 dist/Copree 整目录打包，文档随之落地。
+          mkdir -p dist/Copree/docs
+          cp -r docs/guides dist/Copree/docs/
+          test -f dist/Copree/docs/guides/用户手册.md || { echo "文档没带上" >&2; exit 1; }
+          echo "bundle ok: customtkinter + PIL 已打包，文档已带上"
 
       - name: Build installer
         shell: bash
@@ -197,6 +202,7 @@ jobs:
             --add-data "backend/app:app" \
             --add-data "frontend/dist:frontend/dist" \
             --add-data "gui_app:gui_app" \
+            --add-data "docs/guides:docs/guides" \
             --hidden-import gui_app \
             --hidden-import customtkinter \
             --hidden-import uvicorn.logging \
@@ -299,6 +305,7 @@ jobs:
             --add-data "backend/app:app" \
             --add-data "frontend/dist:frontend/dist" \
             --add-data "gui_app:gui_app" \
+            --add-data "docs/guides:docs/guides" \
             --hidden-import gui_app \
             --hidden-import customtkinter \
             --hidden-import uvicorn.logging \

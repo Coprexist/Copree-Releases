@@ -21,6 +21,9 @@ a = Analysis(
     datas=[
         ('backend/app', 'app'),
         ('frontend/dist', 'frontend/dist'),
+        # 平台文档：read_manual 工具（AI 查用户手册/创建 AI 参考/世界技能参考）从
+        # _MEIPASS/docs/guides 读。只带 guides（256K），整份 docs 有 13M 的截图。
+        ('docs/guides', 'docs/guides'),
     ],
 
     hiddenimports=[
