@@ -1,4 +1,4 @@
-﻿; Copree Launcher NSIS Installer Script
+; Copree Launcher NSIS Installer Script
 ; =======================================
 ; Generates single .exe installer with:
 ; - Language selection at start
@@ -96,11 +96,15 @@ Section "Copree Launcher" SecMain
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "DisplayName" "Copree 启动器"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "DisplayVersion" "0.3.14"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "DisplayVersion" "${VER3}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "Publisher" "Copree"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Copree" "NoRepair" 1
-  
+
+  ; 让资源管理器重读 shell 图标：升级安装后 exe 换了新图标，Explorer 仍按旧缓存画，
+  ; 用户看到的就是"图标还是糊的"。这一下通知是标准做法，不用让用户手动清缓存。
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
+
 SectionEnd
 
 ; --- Uninstallation Section ---
